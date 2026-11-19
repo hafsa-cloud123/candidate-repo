@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import calendar
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Callable
 
 from .models import (
     LATE_FEE,
+    MAX_DISCOUNT_PERCENT,
     TAX_RATE,
     CreditEntry,
     Customer,
@@ -92,9 +93,7 @@ class BillingService:
         if unknown:
             raise ValueError(f"unknown add-on(s): {', '.join(unknown)}")
 
-        discount = Decimal(str(discount_percent))
-        if discount < 0:
-            raise ValueError("discount cannot be negative")
+        discount = self._parse_discount(discount_percent)
 
         subscription = Subscription(
             id=self.repo.next_id("sub"),
@@ -165,9 +164,10 @@ class BillingService:
         ]
         subtotal = money(plan_amount + sum((amount for _, amount in addon_amounts), Decimal("0")))
 
-        # Discount is currently calculated from the whole recurring subtotal.
+        # The promo discount applies to the plan fee only (client thread 1):
+        # add-ons are never discounted. Tax is calculated after the discount.
         discount_total = money(
-            subtotal * subscription.discount_percent / Decimal("100")
+            plan_amount * subscription.discount_percent / Decimal("100")
         )
         taxable = money(subtotal - discount_total)
         tax_total = money(taxable * TAX_RATE)
@@ -287,6 +287,25 @@ class BillingService:
         if invoice is None:
             raise ValueError("invoice does not exist")
         return invoice
+
+    @staticmethod
+    def _parse_discount(value: Decimal | int | str) -> Decimal:
+        """Return a valid discount percent, or raise ValueError.
+
+        Valid range is 0 <= percent <= 30 (client thread 1). Values above the
+        cap are rejected, never silently clamped, so operations sees the typo.
+        """
+        try:
+            discount = Decimal(str(value))
+        except InvalidOperation:
+            raise ValueError("discount must be a number") from None
+        if not discount.is_finite():
+            raise ValueError("discount must be a finite number")
+        if discount < 0:
+            raise ValueError("discount cannot be negative")
+        if discount > MAX_DISCOUNT_PERCENT:
+            raise ValueError(f"discount cannot be more than {MAX_DISCOUNT_PERCENT}%")
+        return discount
 
     @staticmethod
     def _month_bounds(year: int, month: int) -> tuple[date, date]:

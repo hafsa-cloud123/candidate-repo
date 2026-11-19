@@ -7,6 +7,7 @@ from typing import Callable
 
 from .models import (
     LATE_FEE,
+    LATE_FEE_GRACE_DAYS,
     MAX_DISCOUNT_PERCENT,
     TAX_RATE,
     CreditEntry,
@@ -246,7 +247,9 @@ class BillingService:
             return invoice
         if invoice.amount_due <= 0:
             return invoice
-        if day < invoice.due_on + timedelta(days=5):
+        # Five full calendar days of grace after the due date: due + 5 is still
+        # on time, the fee starts on due + 6 (client thread 2).
+        if day <= invoice.due_on + timedelta(days=LATE_FEE_GRACE_DAYS):
             return invoice
         if invoice.late_fee > 0:
             return invoice

@@ -149,17 +149,18 @@ class BillingService:
         issued = issued_on or self._today()
         plan = self.repo.plans[subscription.plan_code]
 
-        # Mid-month starts use a simple 30-day convention. Add-ons are charged
-        # in full on the first invoice.
-        if subscription.start_date <= period_start:
-            factor = Decimal("1")
-        else:
-            billable_days = (period_end - subscription.start_date).days
-            factor = Decimal(billable_days) / Decimal("30")
-
-        plan_amount = money(plan.monthly_price * factor)
+        # Proration (client thread 2): billable calendar days divided by the
+        # real number of days in the month. The plan and every add-on use the
+        # same ratio and each line is rounded to cents on its own.
+        days_in_month = period_end.day
+        plan_amount = self._prorate(plan.monthly_price, active_days, days_in_month)
         addon_amounts = [
-            (self.repo.addons[code], money(self.repo.addons[code].monthly_price))
+            (
+                self.repo.addons[code],
+                self._prorate(
+                    self.repo.addons[code].monthly_price, active_days, days_in_month
+                ),
+            )
             for code in subscription.addon_codes
         ]
         subtotal = money(plan_amount + sum((amount for _, amount in addon_amounts), Decimal("0")))
@@ -287,6 +288,18 @@ class BillingService:
         if invoice is None:
             raise ValueError("invoice does not exist")
         return invoice
+
+    @staticmethod
+    def _prorate(price: Decimal, active_days: int, days_in_month: int) -> Decimal:
+        """Charge `active_days` out of `days_in_month`, rounded half-up to cents.
+
+        A full month is billed at the exact list price. Otherwise the price is
+        multiplied by the day count *before* dividing, so no intermediate
+        rounding of the ratio can push a value across a half-cent boundary.
+        """
+        if active_days == days_in_month:
+            return money(price)
+        return money(price * Decimal(active_days) / Decimal(days_in_month))
 
     @staticmethod
     def _parse_discount(value: Decimal | int | str) -> Decimal:

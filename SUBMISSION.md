@@ -4,7 +4,7 @@
 
 ## Repository
 
-- Remote URL:
+- Remote URL: https://github.com/hafsa-cloud123/candidate-repo.git
 - Default branch: `main`
 
 ## Pull requests

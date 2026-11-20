@@ -9,13 +9,13 @@
 
 ## Pull requests
 
-| Ticket | Branch | PR link | Key commits |
+| Ticket | Branch | PR link |
 |---|---|---|---|
-| BUG-101 | `bugfix/BUG-101-discount-scope` | | |
-| BUG-102 | `bugfix/BUG-102-calendar-proration` | | |
-| BUG-103 | `bugfix/BUG-103-late-fee-grace` | | |
-| FEAT-201 | `feature/FEAT-201-pause-resume` | | |
-| FEAT-202 | `feature/FEAT-202-referral-credits` | | |
+| BUG-101 | `bugfix/BUG-101-discount-scope` |PR1_BUG-101.md |
+| BUG-102 | `bugfix/BUG-102-calendar-proration` |PR2_BUG-102.md |
+| BUG-103 | `bugfix/BUG-103-late-fee-grace` |PR3_BUG-103.md |
+| FEAT-201 | `feature/FEAT-201-pause-resume` |PR4_FEAT-201.md |
+| FEAT-202 | `feature/FEAT-202-referral-credits` |PR5_FEAT-202.md |
 
 ## Test evidence
 
